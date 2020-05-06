@@ -8,7 +8,8 @@ import (
 )
 
 func p() {
-	p := "hello world"
+	p := "hello world used as input"
+	fmt.Println("Signing this input", p)
 	b1, b2, b3 := b.RandPrivateKey(), b.RandPrivateKey(), b.RandPrivateKey()
 	b1p, b2p, _ := b1.GetPublicKey(), b2.GetPublicKey(), b3.GetPublicKey()
 	sigs := []*bls.Sign{b1.Sign(p), b2.Sign(p), b2.Sign(p)}

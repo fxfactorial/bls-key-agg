@@ -1,7 +1,6 @@
 FROM algebr/ostn-node
 
 WORKDIR /src/
-COPY main.go go.* /src/
 
 ARG HMY_PATH=/src
 
@@ -20,6 +19,8 @@ RUN cd mcl bls && make -j8
 RUN git clone https://github.com/harmony-one/bls.git bls
 
 RUN cd bls && make -j8 BLS_SWAP_G=1
+
+COPY main.go go.* /src/
 
 RUN go build -o /bin/demo
 
