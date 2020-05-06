@@ -7,41 +7,65 @@ import (
 	b "github.com/harmony-one/harmony/crypto/bls"
 )
 
-func p() {
-	p := "hello world used as input"
-	fmt.Println("Signing this input", p)
-	b1, b2, b3 := b.RandPrivateKey(), b.RandPrivateKey(), b.RandPrivateKey()
-	b1p, b2p, _ := b1.GetPublicKey(), b2.GetPublicKey(), b3.GetPublicKey()
-	sigs := []*bls.Sign{b1.Sign(p), b2.Sign(p), b2.Sign(p)}
-	agSig := b.AggregateSig(sigs)
-	publicKeys := []*bls.PublicKey{b1p, b2p, b2p}
-	mask, _ := b.NewMask(publicKeys, nil)
+func green(s string) {
+	fmt.Printf("\x1b[32m%s\x1b[0m \n", s)
+}
 
-	for _, key := range publicKeys {
-		fmt.Println("signer", key.SerializeToHexStr())
-		mask.SetKey(key, true)
+func red(s string) {
+	fmt.Printf("\x1b[31m%s\x1b[0m \n", s)
+}
+
+func p() {
+	p := "hello world"
+	fmt.Println("Using the following inside the backticks as signing input:\t", "`"+p+"`")
+	b1, b2, b3 := b.RandPrivateKey(), b.RandPrivateKey(), b.RandPrivateKey()
+	var (
+		sigs       []*bls.Sign
+		publicKeys []*bls.PublicKey
+	)
+	// NOTE Order of public keys matters, the mask is
+	// and implementation detail in harmony
+	privateKeys := []*bls.SecretKey{b1, b2, b3}
+	for _, k := range privateKeys {
+		publicKeys = append(publicKeys, k.GetPublicKey())
+	}
+	mask, _ := b.NewMask(publicKeys, nil)
+	for i, key := range privateKeys {
+
+		// mask.SetKey(publicKeys[i], false)
+		// sigs = append(sigs, &bls.Sign{})
+
+		if i == 2 {
+			shouldBe := publicKeys[i]
+			mask.SetKey(shouldBe, true)
+			other := privateKeys[i-1]
+			otherP := other.GetPublicKey()
+			sigs = append(sigs, other.Sign(p))
+			red("this voter voter should be signing \n" +
+				shouldBe.SerializeToHexStr() + "\nbut instead this voter signed\n" +
+				otherP.SerializeToHexStr(),
+			)
+			break
+		}
+
+		green("this voter does sign->\n\t" + publicKeys[i].SerializeToHexStr())
+		sigs = append(sigs, key.Sign(p))
+		mask.SetKey(publicKeys[i], true)
+
 	}
 
 	// Can only touch aggregatepublic after the SetKey functions happened
 	agKey := mask.AggregatePublic
+	agSig := b.AggregateSig(sigs)
+
+	green("\nThe aggregate public key: \n\t" + agKey.SerializeToHexStr())
+	green("\nThe signature aggregated: \n\t" + agSig.SerializeToHexStr())
 
 	if agSig.Verify(agKey, p) {
-		fmt.Println("does verify")
+		green("aggregate key does verify the aggregate signature")
 	} else {
-		fmt.Println("does not verify")
-	}
+		red("\n\nthe aggregate signature cannot be verified by the aggregate key")
 
-	fmt.Println("agg sig:", agSig.SerializeToHexStr())
-
-	for i, key := range mask.GetPubKeyFromMask(true) {
-		switch signed, err := mask.IndexEnabled(i); true {
-		case err != nil:
-			continue
-		case signed:
-			fmt.Println("signed-", key.SerializeToHexStr())
-		default:
-			fmt.Println("shouldnt happen")
-		}
 	}
 
 }
